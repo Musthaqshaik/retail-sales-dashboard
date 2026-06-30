@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail Sales &amp; Customer Segmentation Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root {
+  --bg-primary: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-header: #14213d;
+  --text-primary: #1b1f27;
+  --text-secondary: #6b7280;
+  --text-on-dark: #ffffff;
+  --color-1: #2563eb;
+  --color-2: #f59e0b;
+  --color-3: #10b981;
+  --color-4: #ef4444;
+  --color-5: #8b5cf6;
+  --color-6: #06b6d4;
+  --positive: #10b981;
+  --negative: #ef4444;
+  --neutral: #6b7280;
+  --gap: 16px;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height:1.5; }
+.dashboard-container { max-width: 1400px; margin: 0 auto; padding: var(--gap); }
+.dashboard-header { background: linear-gradient(135deg, var(--bg-header), #1d3461); color: var(--text-on-dark); padding: 24px 28px; border-radius: var(--radius); margin-bottom: var(--gap); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+.dashboard-header h1 { font-size: 22px; font-weight: 700; }
+.dashboard-header p { font-size: 13px; color: rgba(255,255,255,0.7); margin-top:4px; }
+.filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.filter-group { display:flex; flex-direction:column; gap:4px; }
+.filter-group label { font-size: 11px; color: rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:0.5px; }
+.filter-group select { padding:7px 10px; border:1px solid rgba(255,255,255,0.25); border-radius:6px; background:rgba(255,255,255,0.12); color:var(--text-on-dark); font-size:13px; min-width:140px; }
+.filter-group select option { background: var(--bg-header); color: var(--text-on-dark); }
+.reset-btn { padding:7px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:white; font-size:12px; cursor:pointer; align-self:flex-end; }
+.reset-btn:hover { background:rgba(255,255,255,0.2); }
+
+.kpi-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: var(--gap); margin-bottom: var(--gap); }
+.kpi-card { background: var(--bg-card); border-radius: var(--radius); padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid var(--color-1); }
+.kpi-card.profit { border-left-color: var(--color-3); }
+.kpi-card.orders { border-left-color: var(--color-2); }
+.kpi-card.customers { border-left-color: var(--color-5); }
+.kpi-card.aov { border-left-color: var(--color-6); }
+.kpi-card.margin { border-left-color: var(--color-4); }
+.kpi-label { font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+.kpi-value { font-size:26px; font-weight:700; color: var(--text-primary); }
+
+.insight-banner { background:#fffbeb; border:1px solid #fde68a; border-radius: var(--radius); padding:14px 20px; margin-bottom: var(--gap); font-size:13.5px; color:#78350f; display:flex; gap:10px; align-items:flex-start; }
+.insight-banner b { color:#92400e; }
+
+.chart-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px,1fr)); gap: var(--gap); margin-bottom: var(--gap); }
+.chart-row.three { grid-template-columns: repeat(auto-fit, minmax(340px,1fr)); }
+.chart-container { background: var(--bg-card); border-radius: var(--radius); padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.chart-container h3 { font-size:14px; font-weight:600; margin-bottom:4px; }
+.chart-container .subtitle { font-size:11.5px; color:var(--text-secondary); margin-bottom:14px; }
+.chart-container canvas { max-height: 280px; }
+
+.segment-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin-top: 8px; }
+.segment-pill { padding: 10px 12px; border-radius:8px; background:#f8f9fb; text-align:center; cursor:pointer; border:2px solid transparent; transition: all .15s; }
+.segment-pill:hover { border-color: var(--color-1); }
+.segment-pill.active { border-color: var(--color-1); background:#eef2ff; }
+.segment-pill .seg-name { font-size:11px; font-weight:600; color:var(--text-secondary); }
+.segment-pill .seg-count { font-size:18px; font-weight:700; margin-top:2px; }
+
+.table-section { background: var(--bg-card); border-radius: var(--radius); padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow-x:auto; margin-bottom: var(--gap); }
+.table-section h3 { font-size:14px; font-weight:600; margin-bottom:14px; }
+.data-table { width:100%; border-collapse: collapse; font-size:13px; }
+.data-table thead th { text-align:left; padding:10px 12px; border-bottom:2px solid #dee2e6; color:var(--text-secondary); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; cursor:pointer; user-select:none; }
+.data-table thead th:hover { color: var(--text-primary); background:#f8f9fa; }
+.data-table tbody td { padding:9px 12px; border-bottom:1px solid #f0f0f0; }
+.data-table tbody tr:hover { background:#f8f9fa; }
+.badge { padding:3px 9px; border-radius:99px; font-size:11px; font-weight:600; }
+.badge.Champions { background:#dcfce7; color:#166534; }
+.badge.Loyal { background:#dbeafe; color:#1e40af; }
+.badge.AtRisk { background:#fee2e2; color:#991b1b; }
+.badge.NeedAttention { background:#fef3c7; color:#92400e; }
+.badge.New { background:#ede9fe; color:#5b21b6; }
+.badge.Hibernating { background:#f3f4f6; color:#4b5563; }
+.profit-pos { color: var(--positive); font-weight:600; }
+.profit-neg { color: var(--negative); font-weight:600; }
+
+.dashboard-footer { text-align:center; padding:16px; font-size:12px; color:var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .dashboard-header { flex-direction:column; align-items:flex-start; }
+  .kpi-row { grid-template-columns: repeat(2,1fr); }
+  .chart-row, .chart-row.three { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="dashboard-container">
+
+  <header class="dashboard-header">
+    <div>
+      <h1>Retail Sales &amp; Customer Segmentation Dashboard</h1>
+      <p>US Superstore · 2013–2016 · 2,703 customers · 6,455 orders</p>
+    </div>
+    <div class="filters">
+      <div class="filter-group">
+        <label for="filter-region">Region</label>
+        <select id="filter-region" onchange="dash.applyFilters()"><option value="all">All Regions</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-category">Category</label>
+        <select id="filter-category" onchange="dash.applyFilters()"><option value="all">All Categories</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-year">Year</label>
+        <select id="filter-year" onchange="dash.applyFilters()"><option value="all">All Years</option></select>
+      </div>
+      <button class="reset-btn" onclick="dash.resetFilters()">Reset</button>
+    </div>
+  </header>
+
+  <div class="insight-banner">
+    <span>💡</span>
+    <span><b>Key insight:</b> Orders discounted above 10% flip from an average profit of ~$135 to a <b>net loss</b> — discounting past that threshold is actively destroying margin. See the Discount vs. Profit chart below.</span>
+  </div>
+
+  <section class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Sales</div>
+      <div class="kpi-value" id="kpi-sales">$0</div>
+    </div>
+    <div class="kpi-card profit">
+      <div class="kpi-label">Total Profit</div>
+      <div class="kpi-value" id="kpi-profit">$0</div>
+    </div>
+    <div class="kpi-card margin">
+      <div class="kpi-label">Profit Margin</div>
+      <div class="kpi-value" id="kpi-margin">0%</div>
+    </div>
+    <div class="kpi-card orders">
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value" id="kpi-orders">0</div>
+    </div>
+    <div class="kpi-card aov">
+      <div class="kpi-label">Avg Order Value</div>
+      <div class="kpi-value" id="kpi-aov">$0</div>
+    </div>
+    <div class="kpi-card customers">
+      <div class="kpi-label">Customers</div>
+      <div class="kpi-value" id="kpi-customers">0</div>
+    </div>
+  </section>
+
+  <section class="chart-row">
+    <div class="chart-container">
+      <h3>Monthly Sales &amp; Profit Trend</h3>
+      <div class="subtitle">2013–2016, filtered by selections above</div>
+      <canvas id="chart-trend"></canvas>
+    </div>
+    <div class="chart-container">
+      <h3>Discount Band vs. Average Profit</h3>
+      <div class="subtitle">The cliff: profit per order collapses once discount exceeds 10%</div>
+      <canvas id="chart-discount"></canvas>
+    </div>
+  </section>
+
+  <section class="chart-row three">
+    <div class="chart-container">
+      <h3>Sales by Category</h3>
+      <canvas id="chart-category"></canvas>
+    </div>
+    <div class="chart-container">
+      <h3>Sales by Region</h3>
+      <canvas id="chart-region"></canvas>
+    </div>
+    <div class="chart-container">
+      <h3>Sales by Business Segment</h3>
+      <canvas id="chart-bizsegment"></canvas>
+    </div>
+  </section>
+
+  <section class="chart-container" style="margin-bottom: var(--gap);">
+    <h3>Customer Segments (RFM Analysis)</h3>
+    <div class="subtitle">Recency · Frequency · Monetary scoring across 2,703 customers — click a segment to filter the table below</div>
+    <div class="chart-row" style="margin-top:14px; margin-bottom:0;">
+      <div><canvas id="chart-rfm"></canvas></div>
+      <div id="segment-grid" class="segment-grid"></div>
+    </div>
+  </section>
+
+  <section class="chart-row">
+    <div class="chart-container">
+      <h3>Top 10 Most Profitable Products</h3>
+      <canvas id="chart-topprofit"></canvas>
+    </div>
+    <div class="chart-container">
+      <h3>Top 10 Profit-Losing Products</h3>
+      <canvas id="chart-worstprofit"></canvas>
+    </div>
+  </section>
+
+  <section class="table-section">
+    <h3>Customer Detail — Top 200 by Lifetime Value <span id="segment-filter-label" style="font-weight:400;color:var(--text-secondary);font-size:12px;"></span></h3>
+    <div id="customer-table"></div>
+  </section>
+
+  <footer class="dashboard-footer">
+    Built with Power BI / Tableau skills, rendered here as an interactive HTML preview · Data: US Superstore retail dataset
+  </footer>
+
+</div>
+
+<script src="embedded_data.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
